@@ -1,1 +1,4 @@
-CMakeLists.txt not found in /Users/root1/Downloads/buffer-manager Select CMakeLists.txt file...
+"C:\Users\Woody Mats\.CLion2019.1\system\cygwin_cmake\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" "/cygdrive/c/Users/Woody Mats/CLionProjects/bufferManager/buffer-manager"
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /cygdrive/c/Users/Woody Mats/CLionProjects/bufferManager/buffer-manager/cmake-build-debug
