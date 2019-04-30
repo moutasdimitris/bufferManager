@@ -214,7 +214,7 @@ void test2()
 		rid2 = page2->insertRecord(tmpbuf);
 		//std::cout << "pageno2 allocated: " << pageno2 << std::endl;
 			
-		int index = rand() % num;
+		int index = random() % num;
 		//std::cout << "index: " << index << std::endl;
     pageno1 = pid[index];
 		//std::cout << "pageno1: " << pageno1 << std::endl;
