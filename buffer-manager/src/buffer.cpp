@@ -67,39 +67,35 @@ namespace badgerdb {
 */
     void BufMgr::allocBuf(FrameId & frame) {
         int c = 0; //Counter checks if all pages are pinned
-        bool guard = false; //Guard boolean variable. When we have 1 of the 3 page changing situations it breaks the loop!
-        while(c <= sizeof(bufDescTable) && guard == false){
-            if(!bufDescTable[clockHand].valid){
+        while (c <= numBufs) {
+            if (!bufDescTable[clockHand].valid) {
                 frame = clockHand;
-                guard = true;
-            }
-            else{
+                return;
+            } else {
                 //Victim page (refbit and dirty bit are 0)
-                if(bufDescTable[clockHand].pinCnt == 0 && !bufDescTable[clockHand].dirty){
+                if (bufDescTable[clockHand].pinCnt == 0 && !bufDescTable[clockHand].dirty) {
                     hashTable->remove(bufDescTable[clockHand].file, bufDescTable[clockHand].pageNo);
                     frame = clockHand;
-                    guard = true;
-
+                    return;
                     //
-                } else if(bufDescTable[clockHand].pinCnt == 0 && bufDescTable[clockHand].dirty) {
+                } else if (bufDescTable[clockHand].pinCnt == 0 && bufDescTable[clockHand].dirty) {
                     flushFile(bufDescTable[clockHand].file);
                     frame = clockHand;
-                    guard = true;
-
-                }else if(bufDescTable[clockHand].pinCnt > 0){
+                    return;
+                } else if (bufDescTable[clockHand].pinCnt > 0) {
                     c++;
                     advanceClock();
-
                     //reference bit != 0
-                } else if(bufDescTable[clockHand].refbit){
+                } else if (bufDescTable[clockHand].refbit) {
                     bufDescTable[clockHand].refbit = false;
                     advanceClock();
                 }
             }
         }
-            if(c == numBufs){
-                throw BufferExceededException();
-            }
+
+        // if all pages are pinned, throw BufferExceededException
+        throw BufferExceededException();
+
 
     }
 
@@ -110,11 +106,26 @@ namespace badgerdb {
  returns the Page.
 */
     void BufMgr::readPage(File* file, const PageId pageNo, Page*& page) {
-
-        /* ============== */
-        /* YOUR CODE HERE */
-        /* ============== */
-
+        FrameId frameNo;    // used to get frameNumber
+        try {
+            // get frameNumber and set the refbit, and then increase pinCount
+            // also, return the ptr to the page
+            hashTable->lookup(file, pageNo, frameNo);
+            bufDescTable[frameNo].refbit = true;
+            bufDescTable[frameNo].pinCnt++;
+            page = &bufPool[frameNo];
+        }
+        catch (HashNotFoundException e) {
+            // if the page is not yet existed in the hashtable, allocate it and
+            // set the bufDescTable
+            // also, return the ptr to the page and its pageNo
+            FrameId frameFree;
+            allocBuf(frameFree);
+            bufPool[frameFree] = file->readPage(pageNo);
+            hashTable->insert(file, pageNo, frameFree);
+            bufDescTable[frameFree].Set(file, pageNo);
+            page = &bufPool[frameFree];
+        }
     }
 
 /*
@@ -151,7 +162,7 @@ namespace badgerdb {
 */
     void BufMgr::flushFile(const File* file) {
 
-        for(int i=0; i< sizeof(bufDescTable);i++){
+        for(int i=0; i< numBufs;i++){
             if(!bufDescTable[i].valid && bufDescTable[i].file == file){
                 throw BadBufferException(bufDescTable[i].frameNo, bufDescTable[i].dirty, bufDescTable[i].valid, bufDescTable[i].refbit);
             }
@@ -195,7 +206,7 @@ namespace badgerdb {
 
         try{
             hashTable->lookup(file, PageNo, tempFrame);
-            if(bufDescTable[tempFrame].pinCnt > 0){
+            if(bufDescTable[tempFrame].pinCnt != 0){
                 throw PagePinnedException(bufDescTable[tempFrame].file->filename(), bufDescTable[tempFrame].pageNo, bufDescTable[tempFrame].frameNo);
             }
             hashTable->remove(file, PageNo);
