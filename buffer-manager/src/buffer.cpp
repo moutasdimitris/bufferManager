@@ -51,13 +51,12 @@ namespace badgerdb {
  Increment the clockhand within the circular buffer pool .
 */
     void BufMgr::advanceClock() {
-
+        //advance clockhand keep in the numBufs size
         if(clockHand == numBufs-1){
             clockHand = 0;
         }else{
             clockHand++;
         }
-
     }
 
 /*
@@ -79,7 +78,7 @@ namespace badgerdb {
             }if(bufDescTable[clockHand].refbit){
                 bufDescTable[clockHand].refbit = false;
                 continue;
-            //
+
             }if(bufDescTable[clockHand].pinCnt == 0){
                 break;
             }else{
@@ -118,7 +117,6 @@ namespace badgerdb {
 
             //Search for the page in the hashTable. if it's not there throws an exception
             hashTable->lookup(file, pageNo, frameToSearch);
-
             page = &bufPool[frameToSearch];
 
             //Because the page is referenced refbit and pinCnt have to be increased.
@@ -181,7 +179,8 @@ namespace badgerdb {
             if(bufDescTable[i].file == file && bufDescTable[i].pinCnt>0){
                 throw PagePinnedException(file->filename(), bufDescTable[i].pageNo, bufDescTable[i].frameNo);
             }
-
+            //if the frame is valid and dirty call write page remove it from hashtable
+            //and clear the bufDescTable
             if(bufDescTable[i].valid && bufDescTable[i].file == file){
                 if(bufDescTable[i].dirty){
                     bufDescTable[i].file->writePage(bufPool[i]);
@@ -198,7 +197,7 @@ namespace badgerdb {
  This function allocates a new page and reads it into the buffer pool.
 */
     void BufMgr::allocPage(File* file, PageId &pageNo, Page*& page) {
-
+        //allocate a new frame
         FrameId frameToAlloc;
         allocBuf(frameToAlloc);
         bufPool[frameToAlloc] = file->allocatePage();
