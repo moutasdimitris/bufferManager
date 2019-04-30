@@ -66,39 +66,39 @@ namespace badgerdb {
  a new frame is the clock algorithm.
 */
     void BufMgr::allocBuf(FrameId & frame) {
-        int c = 0; //Counter checks if all pages are pinned
-        bool guard = false; //Guard boolean variable. When we have 1 of the 3 page changing situations it breaks the loop!
-        while(c <= sizeof(bufDescTable) && guard == false){
-            if(!bufDescTable[clockHand].valid){
-                frame = clockHand;
+        int pinCount = 0;
+        while(pinCount <= numBufs){
+            advanceClock();
+            if (!bufDescTable[clockHand].valid){
+                frame = bufDescTable[clockHand].frameNo;
                 return;
-            }
-            else{
-                //Victim page (refbit and dirty bit are 0)
-                if(bufDescTable[clockHand].pinCnt == 0 && !bufDescTable[clockHand].dirty){
-                    hashTable->remove(bufDescTable[clockHand].file, bufDescTable[clockHand].pageNo);
-                    frame = clockHand;
-                    return;
 
-                    //
-                } else if(bufDescTable[clockHand].pinCnt == 0 && bufDescTable[clockHand].dirty) {
-                    flushFile(bufDescTable[clockHand].file);
-                    frame = clockHand;
-                    return;
+            }if(bufDescTable[clockHand].refbit){
+                bufDescTable[clockHand].refbit = false;
+                continue;
 
-                }else if(bufDescTable[clockHand].pinCnt > 0){
-                    c++;
-                    advanceClock();
-
-                    //reference bit != 0
-                } else if(bufDescTable[clockHand].refbit){
-                    bufDescTable[clockHand].refbit = false;
-                    advanceClock();
-                }
+            }if(bufDescTable[clockHand].pinCnt == 0){
+                break;
+            }else{
+                pinCount++;
             }
         }
-        throw BufferExceededException();
 
+        if(pinCount > numBufs){
+            throw BufferExceededException();
+        }
+
+        // write to disk if dirty
+        if(bufDescTable[clockHand].dirty){
+            bufDescTable[clockHand].file->writePage(bufPool[clockHand]);
+            frame = bufDescTable[clockHand].frameNo;
+        }else{
+            frame = bufDescTable[clockHand].frameNo;
+        }
+        //remove relevent hashtable entry
+        hashTable->remove(bufDescTable[clockHand].file, bufDescTable[clockHand].pageNo);
+        //clear the buffer for use (Test 5)
+        bufDescTable[clockHand].Clear();
     }
 
 /*
