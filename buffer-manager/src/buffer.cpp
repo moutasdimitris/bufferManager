@@ -52,7 +52,7 @@ namespace badgerdb {
 */
     void BufMgr::advanceClock() {
 
-        if(clockHand == numBufs){
+        if(clockHand == numBufs-1){
             clockHand = 0;
         }else{
             clockHand++;
