@@ -66,7 +66,7 @@ namespace badgerdb {
  a new frame is the clock algorithm.
 */
     void BufMgr::allocBuf(FrameId & frame) {
-        int pinCount = 0;
+        std::uint32_t pinCount = 0;
         while(pinCount <= numBufs){
             advanceClock(); //increase the clockHand
 
@@ -173,7 +173,7 @@ namespace badgerdb {
 */
     void BufMgr::flushFile(const File* file) {
 
-        for(int i=0; i< sizeof(bufDescTable);i++){
+        for(std::uint32_t i=0; i< sizeof(bufDescTable);i++){
             if(!bufDescTable[i].valid && bufDescTable[i].file == file){
                 throw BadBufferException(bufDescTable[i].frameNo, bufDescTable[i].dirty, bufDescTable[i].valid, bufDescTable[i].refbit);
             }
@@ -212,9 +212,7 @@ namespace badgerdb {
    and deleting it from the corresponding file
 */
     void BufMgr::disposePage(File* file, const PageId PageNo) {
-
         FrameId tempFrame;
-
         try{
             hashTable->lookup(file, PageNo, tempFrame);
             if(bufDescTable[tempFrame].pinCnt > 0){
