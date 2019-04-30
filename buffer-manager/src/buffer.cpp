@@ -68,15 +68,18 @@ namespace badgerdb {
     void BufMgr::allocBuf(FrameId & frame) {
         int pinCount = 0;
         while(pinCount <= numBufs){
-            advanceClock();
+            advanceClock(); //increase the clockHand
+
+            //if the frame isn't valid (written), it's written.
             if (!bufDescTable[clockHand].valid){
                 frame = bufDescTable[clockHand].frameNo;
                 return;
 
+            //if page had referenced now refbit is cleared
             }if(bufDescTable[clockHand].refbit){
                 bufDescTable[clockHand].refbit = false;
                 continue;
-
+            //
             }if(bufDescTable[clockHand].pinCnt == 0){
                 break;
             }else{
@@ -88,16 +91,18 @@ namespace badgerdb {
             throw BufferExceededException();
         }
 
-        // write to disk if dirty
+        // if dirty is true the page is written to the file
         if(bufDescTable[clockHand].dirty){
             bufDescTable[clockHand].file->writePage(bufPool[clockHand]);
             frame = bufDescTable[clockHand].frameNo;
         }else{
             frame = bufDescTable[clockHand].frameNo;
         }
-        //remove relevent hashtable entry
+
+        //remove the hashtable entry
         hashTable->remove(bufDescTable[clockHand].file, bufDescTable[clockHand].pageNo);
-        //clear the buffer for use (Test 5)
+
+        //clears the buffer
         bufDescTable[clockHand].Clear();
     }
 
@@ -108,11 +113,30 @@ namespace badgerdb {
  returns the Page.
 */
     void BufMgr::readPage(File* file, const PageId pageNo, Page*& page) {
+        FrameId frameToSearch;
+        try {
 
-        /* ============== */
-        /* YOUR CODE HERE */
-        /* ============== */
+            //Search for the page in the hashTable. if it's not there throws an exception
+            hashTable->lookup(file, pageNo, frameToSearch);
 
+            page = &bufPool[frameToSearch];
+
+            //Because the page is referenced refbit and pinCnt have to be increased.
+            bufDescTable[frameToSearch].refbit = true;
+            bufDescTable[frameToSearch].pinCnt++;
+        } catch(HashNotFoundException& e) {
+            try {
+                allocBuf(frameToSearch);
+                Page tempPage = file->readPage(pageNo);
+                bufPool[frameToSearch] = tempPage;
+
+                hashTable->insert(file, pageNo, frameToSearch);
+                bufDescTable[frameToSearch].Set(file, pageNo);
+
+                //return the page
+                page = &bufPool[frameToSearch];
+            } catch(BufferExceededException e) {}
+        }
     }
 
 /*
