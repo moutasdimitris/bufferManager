@@ -97,7 +97,9 @@ namespace badgerdb {
                 }
             }
         }
-            throw BufferExceededException();
+            if(c == numBufs){
+                throw BufferExceededException();
+            }
 
     }
 
